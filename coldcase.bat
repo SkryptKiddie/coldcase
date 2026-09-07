@@ -45,6 +45,8 @@ call :log [PHASE] Collecting user profile artefacts
 call :collect_profiles
 call :log [PHASE] Collecting Recycle Bin artefacts
 call :collect_recycle_bin
+call :log [PHASE] Normalizing collection file attributes
+call :normalize_attributes "%COLLECT_ROOT%"
 call :log [PHASE] Creating ZIP package
 call :zip_output "%COLLECT_ROOT%" "%ZIP_FILE%"
 call :cleanup_collection_folder "%COLLECT_ROOT%" "%ZIP_FILE%"
@@ -416,6 +418,16 @@ goto :eof
 if exist "%TARGET_VOL%\RECYCLER" call :copy_dir "%TARGET_VOL%\RECYCLER" "%COLLECT_ROOT%\RecycleBin\RECYCLER"
 if exist "%TARGET_VOL%\Recycled" call :copy_dir "%TARGET_VOL%\Recycled" "%COLLECT_ROOT%\RecycleBin\Recycled"
 if exist "%TARGET_VOL%\$Recycle.Bin" call :copy_dir "%TARGET_VOL%\$Recycle.Bin" "%COLLECT_ROOT%\RecycleBin\$Recycle.Bin"
+goto :eof
+
+:normalize_attributes
+if defined DRYRUN (
+	echo [DRYRUN] ATTRIB -H -S "%~1\*" /S /D
+	goto :eof
+)
+call :log Clearing hidden and system attributes: %~1
+attrib -h -s "%~1\*" /s /d >nul 2>&1
+if errorlevel 1 call :log ATTRIB reported an issue for: %~1
 goto :eof
 
 :collect_one_profile
