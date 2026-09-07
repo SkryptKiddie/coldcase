@@ -9,7 +9,7 @@ Artefact collector designed for legacy versions of Windows.
  ColdCase Logical Collector
 
  Collects artefacts from legacy Windows systems to conduct incident response.
- Tested and designed Windows XP and Windows Server 2003.
+ Tested and designed for Windows XP and Windows Server 2003.
  The tool will automatically target "C:" drive if no /target argument is provided.
 
  Usage:

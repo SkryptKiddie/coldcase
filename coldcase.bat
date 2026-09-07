@@ -62,7 +62,7 @@ echo.
 echo ColdCase Logical Collector
 echo.
 echo Collects artefacts from legacy Windows systems to conduct incident response.
-echo Tested and designed Windows XP and Windows Server 2003.
+echo Tested and designed for Windows XP and Windows Server 2003.
 echo The tool will automatically target "C:" drive if no /target argument is provided.
 echo.
 echo Usage:
