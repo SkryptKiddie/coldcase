@@ -26,7 +26,12 @@ Artefact collector designed for legacy versions of Windows.
 ## Example output
 Results are not saved in a typical Windows file system layout, rather they are sorted by the type of artefact. This may change in the future, but does not affect how these should be interpreted.
 
-The generated bodyfile is compatible with [SluethKit's mactime](https://github.com/sleuthkit/sleuthkit/wiki/mactime) tool to create a file system timeline.
+The generated bodyfile is compatible with [SleuthKit's mactime](https://github.com/sleuthkit/sleuthkit/wiki/mactime) tool to create a file system timeline.
+
+> **_NOTE:_** Currently, INF files are not collected. This can be adjusted by uncommenting the command on lines 401 & 402.
+
+All of the artefacts can be parsed using Eric Zimmerman tools or imported to tools such as Autopsy for analysis.
+
 ```
 C:\COLLECTION-TEST-A6280F1FB9-MON009-07-2026_17-45-01-59
 │   collection.log
@@ -73,6 +78,7 @@ C:\COLLECTION-TEST-A6280F1FB9-MON009-07-2026_17-45-01-59
 │
 ├───Profiles
 │   ├───Administrator
+│   │   │   dir_listing.txt
 │   │   │
 │   │   ├───Application Data
 │   │   │   │   desktop.ini
@@ -111,12 +117,38 @@ C:\COLLECTION-TEST-A6280F1FB9-MON009-07-2026_17-45-01-59
 │   │   │           └───Themes
 │   │   │                   Custom.theme
 │   │   │
-│   │   └───Local Settings
+│   │   ├───Local Settings
+│   │   │   └───Application Data
+│   │   │       │   IconCache.db
+│   │   │       │
+│   │   │       └───Microsoft
+│   │   │           ├───CD Burning
+│   │   │           ├───Credentials
+│   │   │           │   └───S-1-5-21-926789311-2475876919-4159152486-500
+│   │   │           ├───Internet Explorer
+│   │   │           │       brndlog.bak
+│   │   │           │       brndlog.txt
+│   │   │           │       MSIMGSIZ.DAT
+│   │   │           │
+│   │   │           ├───Media Player
+│   │   │           │       CurrentDatabase_59R.wmdb
+│   │   │           │
+│   │   │           ├───Windows
+│   │   │           └───Windows Media
+│   │   │               └───10.0
+│   │   │                       WMSDKNS.DTD
+│   │   │                       WMSDKNS.XML
+│   │   │
+│   │   └───Recent
+│   │           Administrator.lnk
+│   │           WINDOWS.lnk
+│   │           Zapotec.bmp.lnk
 │   │
 │   └───All Users
 │       │   dir_listing.txt
 │       │
 │       └───Application Data
+│           │   desktop.ini
 │           │
 │           └───Microsoft
 │               ├───Crypto
@@ -125,11 +157,15 @@ C:\COLLECTION-TEST-A6280F1FB9-MON009-07-2026_17-45-01-59
 │               │   └───RSA
 │               │       ├───MachineKeys
 │               │       └───S-1-5-18
+│               │               d42cc0c3858a58db2db37658219e6400_4e1354c9-961c-4334-8f07-92c3c3cc6070
 │               │
 │               ├───HTML Help
+│               │       hhcolreg.dat
 │               │
 │               ├───Media Index
 │               ├───Media Player
+│               │       DefaultStore_59R.bin
+│               │       UserMigratedStore_59R.bin
 │               │
 │               └───Network
 │                   └───Connections
@@ -141,6 +177,11 @@ C:\COLLECTION-TEST-A6280F1FB9-MON009-07-2026_17-45-01-59
 │               Dc1.txt
 │               Dc10.txt
 │               Dc11.txt
+│               Dc12.zip
+│               Dc13.bat
+│               Dc14.zip
+│               Dc15.zip
+│               Dc16.bat
 │               Dc2.txt
 │               Dc3.txt
 │               Dc4.txt

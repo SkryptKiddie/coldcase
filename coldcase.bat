@@ -219,6 +219,23 @@ xcopy "%~1" "%~2\" /S /H /I /C /K /Y /F
 if errorlevel 1 call :log XCOPY reported an issue for pattern: %~1
 goto :eof
 
+:copy_dir_without_user_account_pictures
+if not exist "%~1" (
+	call :log Missing directory: %~1
+	goto :eof
+)
+call :mkdir "%~2"
+set "EXCLUDE_FILE=%TEMP%\coldcase_exclude_%RANDOM%.txt"
+if defined DRYRUN (
+	echo [DRYRUN] XCOPY "%~1" "%~2\" /E /H /I /C /K /Y /F /EXCLUDE:"%EXCLUDE_FILE%"
+	goto :eof
+)
+>"%EXCLUDE_FILE%" echo User Account Pictures
+xcopy "%~1" "%~2\" /E /H /I /C /K /Y /F /EXCLUDE:"%EXCLUDE_FILE%"
+if errorlevel 1 call :log XCOPY reported an issue for: %~1
+if exist "%EXCLUDE_FILE%" del /f /q "%EXCLUDE_FILE%" >nul 2>&1
+goto :eof
+
 :save_hive
 if defined DRYRUN (
 	echo [DRYRUN] REG SAVE %1 "%~2" /Y
@@ -446,7 +463,9 @@ if /i "%PROFILE_LAYOUT%"=="modern" (
 	if exist "%PROFILE_PATH%\AppData\LocalLow" call :copy_dir "%PROFILE_PATH%\AppData\LocalLow" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\AppData\LocalLow"
 ) else (
 	if exist "%PROFILE_PATH%\Recent" call :copy_dir "%PROFILE_PATH%\Recent" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Recent"
-	if exist "%PROFILE_PATH%\Application Data" call :copy_dir "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
+	if exist "%PROFILE_PATH%\Application Data" if /i "%PROFILE_NAME%"=="All Users" (
+		call :copy_dir_without_user_account_pictures "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
+	) else if exist "%PROFILE_PATH%\Application Data" call :copy_dir "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
 	if exist "%PROFILE_PATH%\Local Settings\Application Data" call :copy_dir "%PROFILE_PATH%\Local Settings\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Local Settings\Application Data"
 )
 goto :eof
