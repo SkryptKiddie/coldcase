@@ -26,7 +26,7 @@ Artefact collector designed for legacy versions of Windows.
 ## Example output
 Results are not saved in a typical Windows file system layout, rather they are sorted by the type of artefact. This may change in the future, but does not affect how these should be interpreted.
 
-The generated bodyfile is compatible with [SluethKit's mactime](https://github.com/sleuthkit/sleuthkit/wiki/mactime) tool to create a file system timeline.
+The generated bodyfile is compatible with [SleuthKit's mactime](https://github.com/sleuthkit/sleuthkit/wiki/mactime) tool to create a file system timeline.
 ```
 C:\COLLECTION-TEST-A6280F1FB9-MON009-07-2026_17-45-01-59
 │   collection.log
