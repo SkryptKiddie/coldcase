@@ -414,11 +414,20 @@ call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\LOG"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\INF"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Prefetch"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Debug"
+call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 call :copy_pattern "%SystemRoot%\*.log" "%COLLECT_ROOT%\WindowsArtifacts\LOG"
 REM call :copy_pattern "%SystemRoot%\*.inf" "%COLLECT_ROOT%\WindowsArtifacts\INF"
 REM if exist "%SystemRoot%\inf" call :copy_dir "%SystemRoot%\inf" "%COLLECT_ROOT%\WindowsArtifacts\INF\inf"
 if exist "%SystemRoot%\Prefetch" call :copy_dir "%SystemRoot%\Prefetch" "%COLLECT_ROOT%\WindowsArtifacts\Prefetch"
 if exist "%SystemRoot%\Debug" call :copy_dir "%SystemRoot%\Debug" "%COLLECT_ROOT%\WindowsArtifacts\Debug"
+if exist "%SystemRoot%\WINNT" call :copy_dir "%SystemRoot%\WINNT" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%TARGET_VOL%\AUTOEXEC.BAT" call :copy_file "%TARGET_VOL%\AUTOEXEC.BAT" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%TARGET_VOL%\CONFIG.SYS" call :copy_file "%TARGET_VOL%\CONFIG.SYS" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%SystemRoot%\Windows\WIN.INI" call :copy_file "%SystemRoot%\Windows\WIN.INI" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%SystemRoot%\Windows\SYSTEM.INI" call :copy_file "%SystemRoot%\Windows\SYSTEM.INI" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%SystemRoot%\Tasks" call :copy_dir "%SystemRoot%\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
+if exist "%SystemRoot%\System32\Tasks" call :copy_dir "%SystemRoot%\System32\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 goto :eof
 
 :collect_profiles
@@ -463,6 +472,7 @@ if /i "%PROFILE_LAYOUT%"=="modern" (
 	if exist "%PROFILE_PATH%\AppData\LocalLow" call :copy_dir "%PROFILE_PATH%\AppData\LocalLow" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\AppData\LocalLow"
 ) else (
 	if exist "%PROFILE_PATH%\Recent" call :copy_dir "%PROFILE_PATH%\Recent" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Recent"
+	if exist "%PROFILE_PATH%\All Users\Start Menu" call :copy_dir "%PROFILE_PATH%\All Users\Start Menu" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\All Users\Start Menu"
 	if exist "%PROFILE_PATH%\Application Data" if /i "%PROFILE_NAME%"=="All Users" (
 		call :copy_dir_without_user_account_pictures "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
 	) else if exist "%PROFILE_PATH%\Application Data" call :copy_dir "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
