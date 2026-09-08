@@ -39,15 +39,15 @@ call :log [PHASE] Collecting filesystem metadata artefacts
 call :collect_filesystem_metadata
 call :log [PHASE] Building bodyfile
 call :collect_bodyfile
-call :log [PHASE] Collecting Windows log/inf/prefetch/debug artefacts
+call :log [PHASE] Collecting Windows log/lnk/inf/prefetch/debug artefacts
 call :collect_windows_artifacts
 call :log [PHASE] Collecting user profile artefacts
 call :collect_profiles
 call :log [PHASE] Collecting Recycle Bin artefacts
 call :collect_recycle_bin
-call :log [PHASE] Normalizing collection file attributes
-call :normalize_attributes "%COLLECT_ROOT%"
 call :log [PHASE] Creating ZIP package
+call :normalise_attributes "%COLLECT_ROOT%"
+call :capture "%COLLECT_ROOT%\collected_items.txt" tree /f %COLLECT_ROOT%
 call :zip_output "%COLLECT_ROOT%" "%ZIP_FILE%"
 call :cleanup_collection_folder "%COLLECT_ROOT%" "%ZIP_FILE%"
 
@@ -62,6 +62,7 @@ goto :eof
 :usage
 echo.
 echo ColdCase Logical Collector
+echo https://github.com/SkryptKiddie/coldcase
 echo.
 echo Collects artefacts from legacy Windows systems to conduct incident response.
 echo Tested and designed for Windows XP and Windows Server 2003.
@@ -252,10 +253,14 @@ call :capture "%COLLECT_ROOT%\LiveResponse\hostname.txt" hostname
 call :capture "%COLLECT_ROOT%\LiveResponse\tree.txt" tree /f %TARGET_VOL%\
 call :capture "%COLLECT_ROOT%\LiveResponse\codepage.txt" chcp
 call :capture "%COLLECT_ROOT%\LiveResponse\systeminfo.txt" systeminfo
+call :capture "%COLLECT_ROOT%\LiveResponse\systeminfo.csv" systeminfo /FO CSV
 call :capture "%COLLECT_ROOT%\LiveResponse\ipconfig_all.txt" ipconfig /all
 call :capture "%COLLECT_ROOT%\LiveResponse\netstat_ano.txt" netstat -ano
 call :capture "%COLLECT_ROOT%\LiveResponse\tasklist.txt" tasklist /v
-call :capture "%COLLECT_ROOT%\LiveResponse\services.txt" sc query
+call :capture "%COLLECT_ROOT%\LiveResponse\tasklist.csv" tasklist /v /FO CSV
+call :capture "%COLLECT_ROOT%\LiveResponse\driverquery_v.txt" driverquery /V
+call :capture "%COLLECT_ROOT%\LiveResponse\driverquery_si.txt" driverquery /SI
+call :capture "%COLLECT_ROOT%\LiveResponse\services.txt" sc query 
 call :capture "%COLLECT_ROOT%\LiveResponse\shares.txt" net share
 call :capture "%COLLECT_ROOT%\LiveResponse\sessions.txt" net session
 call :capture "%COLLECT_ROOT%\LiveResponse\users.txt" net user
@@ -263,6 +268,7 @@ call :capture "%COLLECT_ROOT%\LiveResponse\localgroups.txt" net localgroup
 call :capture "%COLLECT_ROOT%\LiveResponse\routes.txt" route print 
 call :capture "%COLLECT_ROOT%\LiveResponse\schtasks.txt" schtasks /query /v
 call :capture "%COLLECT_ROOT%\LiveResponse\arp.txt" arp -a
+call :capture "%COLLECT_ROOT%\LiveResponse\gpresult_z.txt" gpresult /Z
 if exist "%SystemRoot%\pfirewall.log" call :copy_file "%SystemRoot%\pfirewall.log" "%COLLECT_ROOT%\LiveResponse"
 goto :eof
 
@@ -411,23 +417,31 @@ goto :eof
 :collect_windows_artifacts
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\LOG"
+call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\LNK"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\INF"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Prefetch"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Debug"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 call :copy_pattern "%SystemRoot%\*.log" "%COLLECT_ROOT%\WindowsArtifacts\LOG"
+call :copy_pattern "%TARGET_VOL%\*.lnk" "%COLLECT_ROOT%\WindowsArtifacts\LNK"
 REM call :copy_pattern "%SystemRoot%\*.inf" "%COLLECT_ROOT%\WindowsArtifacts\INF"
 REM if exist "%SystemRoot%\inf" call :copy_dir "%SystemRoot%\inf" "%COLLECT_ROOT%\WindowsArtifacts\INF\inf"
+if exist "%SystemRoot%\setupapi.log" call :copy_file "%SystemRoot%\setupapi.log" "%COLLECT_ROOT%\WindowsArtifacts\INF"
 if exist "%SystemRoot%\Prefetch" call :copy_dir "%SystemRoot%\Prefetch" "%COLLECT_ROOT%\WindowsArtifacts\Prefetch"
 if exist "%SystemRoot%\Debug" call :copy_dir "%SystemRoot%\Debug" "%COLLECT_ROOT%\WindowsArtifacts\Debug"
 if exist "%SystemRoot%\WINNT" call :copy_dir "%SystemRoot%\WINNT" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 if exist "%TARGET_VOL%\AUTOEXEC.BAT" call :copy_file "%TARGET_VOL%\AUTOEXEC.BAT" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%SystemRoot%\System32\AUTOEXEC.NT" call :copy_file "%SystemRoot%\System32\AUTOEXEC.NT" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%SystemRoot%\System32\CONFIG.NT" call :copy_file "%SystemRoot%\System32\CONFIG.NT" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%SystemRoot%\System32\CONFIG.TMP" call :copy_file "%SystemRoot%\System32\CONFIG.TMP" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 if exist "%TARGET_VOL%\CONFIG.SYS" call :copy_file "%TARGET_VOL%\CONFIG.SYS" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
-if exist "%SystemRoot%\Windows\WIN.INI" call :copy_file "%SystemRoot%\Windows\WIN.INI" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
-if exist "%SystemRoot%\Windows\SYSTEM.INI" call :copy_file "%SystemRoot%\Windows\SYSTEM.INI" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%SystemRoot%\WIN.INI" call :copy_file "%SystemRoot%\WIN.INI" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
+if exist "%SystemRoot%\SYSTEM.INI" call :copy_file "%SystemRoot%\SYSTEM.INI" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 if exist "%SystemRoot%\Tasks" call :copy_dir "%SystemRoot%\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
+if exist "%SystemRoot%\Temp" call :copy_dir "%SystemRoot%\Temp" "%COLLECT_ROOT%\WindowsArtifacts\Temp"
 if exist "%SystemRoot%\System32\Tasks" call :copy_dir "%SystemRoot%\System32\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
+if exist "%SystemRoot%\repair" call :copy_dir "%SystemRoot%\repair" "%COLLECT_ROOT%\WindowsArtifacts\repair"
 goto :eof
 
 :collect_profiles
@@ -446,7 +460,7 @@ if exist "%TARGET_VOL%\Recycled" call :copy_dir "%TARGET_VOL%\Recycled" "%COLLEC
 if exist "%TARGET_VOL%\$Recycle.Bin" call :copy_dir "%TARGET_VOL%\$Recycle.Bin" "%COLLECT_ROOT%\RecycleBin\$Recycle.Bin"
 goto :eof
 
-:normalize_attributes
+:normalise_attributes
 if defined DRYRUN (
 	echo [DRYRUN] ATTRIB -H -S "%~1\*" /S /D
 	goto :eof
