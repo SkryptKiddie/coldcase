@@ -270,7 +270,26 @@ call :capture "%COLLECT_ROOT%\LiveResponse\schtasks.txt" schtasks /query /v
 call :capture "%COLLECT_ROOT%\LiveResponse\arp.txt" arp -a
 call :capture "%COLLECT_ROOT%\LiveResponse\gpresult_z.txt" gpresult /Z
 if exist "%SystemRoot%\pfirewall.log" call :copy_file "%SystemRoot%\pfirewall.log" "%COLLECT_ROOT%\LiveResponse"
-goto :eof
+set "HAS_WMIC=0"
+if exist "%SystemRoot%\system32\wbem\wmic.exe" set "HAS_WMIC=1"
+if exist "%SystemRoot%\wbem\wmic.exe" set "HAS_WMIC=1"
+if "%HAS_WMIC%"=="1" (
+    call :log WMIC installed, performing additional live response collections.
+    call :mkdir "%COLLECT_ROOT%\LiveResponse\wmic"
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\installed_programs.txt" wmic product get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\services.txt" wmic service get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\local_accounts.txt" wmic useraccount where "LocalAccount='True'" get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\computersystem.txt" wmic computersystem get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\bios.txt" wmic bios get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\diskdrive.txt" wmic diskdrive get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\logicaldisk.txt" wmic logicaldisk get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\process.txt" wmic process get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\eventlog.csv" wmic nteventlog get * /format:csv
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\startup.txt" wmic startup get *
+) else (
+    call :log WMIC not installed, skipping.
+)
+exit /b 0
 
 :collect_registry
 call :mkdir "%COLLECT_ROOT%\Registry"
@@ -290,7 +309,7 @@ if exist "%SystemRoot%\regback\sam" call :copy_file "%SystemRoot%\regback\sam" "
 if exist "%SystemRoot%\regback\system" call :copy_file "%SystemRoot%\regback\system" "%COLLECT_ROOT%\Registry\regback"
 if exist "%SystemRoot%\regback\software" call :copy_file "%SystemRoot%\regback\software" "%COLLECT_ROOT%\Registry\regback"
 if exist "%SystemRoot%\regback\security" call :copy_file "%SystemRoot%\regback\security" "%COLLECT_ROOT%\Registry\regback"
-goto :eof
+exit /b 0
 
 :collect_loaded_user_hives
 for /f "skip=1 tokens=1" %%K in ('reg query HKU 2^>nul') do call :save_loaded_user_hive "%%K"
@@ -310,7 +329,7 @@ goto :eof
 call :mkdir "%COLLECT_ROOT%\EventLogs"
 for %%F in ("%SystemRoot%\system32\config\*.evt") do call :copy_file "%%~fF" "%COLLECT_ROOT%\EventLogs"
 for %%F in ("%SystemRoot%\system32\winevt\Logs\*.evtx") do call :copy_file "%%~fF" "%COLLECT_ROOT%\EventLogs"
-goto :eof
+exit /b 0
 
 :collect_filesystem_metadata
 call :mkdir "%COLLECT_ROOT%\Filesystem"
@@ -325,11 +344,8 @@ if exist "%SystemRoot%\system32\fsutil.exe" (
 	call :capture "%COLLECT_ROOT%\Filesystem\fsutil_volumeinfo.txt" fsutil fsinfo volumeinfo %TARGET_VOL%
 	call :capture "%COLLECT_ROOT%\Filesystem\fsutil_ntfsinfo.txt" fsutil fsinfo ntfsinfo %TARGET_VOL%
 	call :capture "%COLLECT_ROOT%\Filesystem\fsutil_dirty_query.txt" fsutil dirty query %TARGET_VOL%
-	call :capture "%COLLECT_ROOT%\Filesystem\fsutil_usn_queryjournal.txt" fsutil usn queryjournal %TARGET_VOL%
-	call :capture "%COLLECT_ROOT%\Filesystem\fsutil_usn_enumdata.txt" fsutil usn enumdata 0 0 0x7FFFFFFFFFFFFFFF %TARGET_VOL%
-	call :capture "%COLLECT_ROOT%\Filesystem\fsutil_usn_readjournal.txt" fsutil usn readjournal %TARGET_VOL% startusn=0
 )
-goto :eof
+exit /b 0
 
 :collect_bodyfile
 call :mkdir "%COLLECT_ROOT%\Bodyfile"
@@ -438,37 +454,37 @@ if exist "%SystemRoot%\System32\CONFIG.TMP" call :copy_file "%SystemRoot%\System
 if exist "%TARGET_VOL%\CONFIG.SYS" call :copy_file "%TARGET_VOL%\CONFIG.SYS" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 if exist "%SystemRoot%\WIN.INI" call :copy_file "%SystemRoot%\WIN.INI" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 if exist "%SystemRoot%\SYSTEM.INI" call :copy_file "%SystemRoot%\SYSTEM.INI" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
-if exist "%SystemRoot%\Tasks" call :copy_dir "%SystemRoot%\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 if exist "%SystemRoot%\Temp" call :copy_dir "%SystemRoot%\Temp" "%COLLECT_ROOT%\WindowsArtifacts\Temp"
+if exist "%SystemRoot%\Tasks" call :copy_dir "%SystemRoot%\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 if exist "%SystemRoot%\System32\Tasks" call :copy_dir "%SystemRoot%\System32\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 if exist "%SystemRoot%\repair" call :copy_dir "%SystemRoot%\repair" "%COLLECT_ROOT%\WindowsArtifacts\repair"
-goto :eof
+exit /b 0
 
 :collect_profiles
 if exist "%TARGET_VOL%\Documents and Settings" (
 	for /d %%P in ("%TARGET_VOL%\Documents and Settings\*") do call :collect_one_profile "%%~fP" legacy
-	goto :eof
+	exit /b 0
 )
 if exist "%TARGET_VOL%\Users" (
 	for /d %%P in ("%TARGET_VOL%\Users\*") do call :collect_one_profile "%%~fP" modern
 )
-goto :eof
+exit /b 0
 
 :collect_recycle_bin
 if exist "%TARGET_VOL%\RECYCLER" call :copy_dir "%TARGET_VOL%\RECYCLER" "%COLLECT_ROOT%\RecycleBin\RECYCLER"
 if exist "%TARGET_VOL%\Recycled" call :copy_dir "%TARGET_VOL%\Recycled" "%COLLECT_ROOT%\RecycleBin\Recycled"
 if exist "%TARGET_VOL%\$Recycle.Bin" call :copy_dir "%TARGET_VOL%\$Recycle.Bin" "%COLLECT_ROOT%\RecycleBin\$Recycle.Bin"
-goto :eof
+exit /b 0
 
 :normalise_attributes
 if defined DRYRUN (
 	echo [DRYRUN] ATTRIB -H -S "%~1\*" /S /D
-	goto :eof
+	exit /b 0
 )
 call :log Clearing hidden and system attributes: %~1
 attrib -h -s "%~1\*" /s /d >nul 2>&1
 if errorlevel 1 call :log ATTRIB reported an issue for: %~1
-goto :eof
+exit /b 0
 
 :collect_one_profile
 set "PROFILE_PATH=%~1"
@@ -492,32 +508,32 @@ if /i "%PROFILE_LAYOUT%"=="modern" (
 	) else if exist "%PROFILE_PATH%\Application Data" call :copy_dir "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
 	if exist "%PROFILE_PATH%\Local Settings\Application Data" call :copy_dir "%PROFILE_PATH%\Local Settings\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Local Settings\Application Data"
 )
-goto :eof
+exit /b 0
 
 :zip_output
 if defined DRYRUN (
 	echo [DRYRUN] ZIP "%~1" to "%~2"
-	goto :eof
+	exit /b 0
 )
 call :write_zip_vbs "%TEMP%\logical_collection_zip.vbs"
 if not exist "%TEMP%\logical_collection_zip.vbs" (
 	call :log Failed to write ZIP helper VBS.
-	goto :eof
+	exit /b 0
 )
 call :log Creating ZIP archive: %~2
 cscript //nologo "%TEMP%\logical_collection_zip.vbs" "%~1" "%~2" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 call :log ZIP creation reported an error.
 if exist "%TEMP%\logical_collection_zip.vbs" del /f /q "%TEMP%\logical_collection_zip.vbs" >nul 2>&1
-goto :eof
+exit /b 0
 
 :cleanup_collection_folder
 if defined DRYRUN (
 	echo [DRYRUN] RD /S /Q "%~1"
-	goto :eof
+	exit /b 0
 )
 if not exist "%~2" (
 	call :log ZIP file not found, keeping uncompressed folder: %~1
-	goto :eof
+	exit /b 0
 )
 call :log Removing uncompressed collection folder: %~1
 rd /s /q "%~1" >nul 2>&1
@@ -526,7 +542,7 @@ if exist "%~1" (
 ) else (
 	echo Removed uncompressed collection folder: "%~1"
 )
-goto :eof
+exit /b 0
 
 :write_zip_vbs
 if exist "%~1" del /f /q "%~1" >nul 2>&1
