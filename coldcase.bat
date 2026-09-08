@@ -268,16 +268,16 @@ if exist "%SystemRoot%\wbem\wmic.exe" set "HAS_WMIC=1"
 if "%HAS_WMIC%"=="1" (
     call :log WMIC detected, performing additional live response collections.
     call :mkdir "%COLLECT_ROOT%\LiveResponse\wmic"
-    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\installed_programs.txt" wmic product get *
-    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\services.txt" wmic service get *
-    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\local_accounts.txt" wmic useraccount where "LocalAccount='True'" get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\installed_programs.csv" wmic product get * /format:csv
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\services.csv" wmic service get * /format:csv
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\local_accounts.csv" wmic useraccount where "LocalAccount='True'" get * /format:csv
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\computersystem.txt" wmic computersystem get *
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\bios.txt" wmic bios get *
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\diskdrive.txt" wmic diskdrive get *
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\logicaldisk.txt" wmic logicaldisk get *
-    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\process.txt" wmic process get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\process.csv" wmic process get * /format:csv
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\eventlog.csv" wmic nteventlog get * /format:csv
-    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\startup.txt" wmic startup get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\startup.csv" wmic startup get * /format.csv
 ) else (
     call :log WMIC not installed, skipping.
 )
