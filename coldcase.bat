@@ -275,7 +275,7 @@ if "%HAS_WMIC%"=="1" (
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\bios.txt" wmic bios get *
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\diskdrive.csv" wmic diskdrive get * /format:csv
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\logicaldisk.csv" wmic logicaldisk get * /format:csv
-    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\process.csv" wmic process get * /format:csv
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\processes.csv" wmic process get * /format:csv
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\eventlog.csv" wmic nteventlog get * /format:csv
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\startup.csv" wmic startup get * /format:csv
 ) else (
@@ -430,13 +430,11 @@ goto :eof
 :collect_windows_artifacts
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\LOG"
-call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\LNK"
 REM call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\INF"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Debug"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 call :copy_pattern "%SystemRoot%\*.log" "%COLLECT_ROOT%\WindowsArtifacts\LOG"
-call :copy_pattern "%TARGET_VOL%\*.lnk" "%COLLECT_ROOT%\WindowsArtifacts\LNK"
 REM call :copy_pattern "%SystemRoot%\*.inf" "%COLLECT_ROOT%\WindowsArtifacts\INF"
 REM if exist "%SystemRoot%\inf" call :copy_dir "%SystemRoot%\inf" "%COLLECT_ROOT%\WindowsArtifacts\INF\inf"
 if exist "%SystemRoot%\Debug" call :copy_dir "%SystemRoot%\Debug" "%COLLECT_ROOT%\WindowsArtifacts\Debug"
