@@ -273,11 +273,14 @@ if "%HAS_WMIC%"=="1" (
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\local_accounts.csv" wmic useraccount where "LocalAccount='True'" get * /format:csv
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\computersystem.txt" wmic computersystem get *
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\bios.txt" wmic bios get *
-    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\diskdrive.csv" wmic diskdrive get * /format:csv
-    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\logicaldisk.csv" wmic logicaldisk get * /format:csv
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\diskdrive.txt" wmic diskdrive get *
+    call :capture "%COLLECT_ROOT%\LiveResponse\wmic\logicaldisk.txt" wmic logicaldisk get *
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\processes.csv" wmic process get * /format:csv
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\eventlog.csv" wmic nteventlog get * /format:csv
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\startup.csv" wmic startup get * /format:csv
+	call :capture "%COLLECT_ROOT%\LiveResponse\wmic\startup.txt" wmic startup get *
+	call :capture "%COLLECT_ROOT%\LiveResponse\wmic\processes.txt" wmic process get * 
+	call :capture "%COLLECT_ROOT%\LiveResponse\wmic\local_accounts.txt" wmic useraccount where "LocalAccount='True'" get *
 ) else (
     call :log WMIC not installed, skipping.
 )
@@ -449,7 +452,6 @@ if exist "%SystemRoot%\SYSTEM.INI" call :copy_file "%SystemRoot%\SYSTEM.INI" "%C
 if exist "%SystemRoot%\Temp" call :copy_dir "%SystemRoot%\Temp" "%COLLECT_ROOT%\WindowsArtifacts\Temp"
 if exist "%SystemRoot%\Tasks" call :copy_dir "%SystemRoot%\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 if exist "%SystemRoot%\System32\Tasks" call :copy_dir "%SystemRoot%\System32\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
-if exist "%SystemRoot%\repair" call :copy_dir "%SystemRoot%\repair" "%COLLECT_ROOT%\WindowsArtifacts\repair"
 if exist "%SystemRoot%/appcompat\Program\Amcache.hiv" call :copy_file "%SystemRoot%/appcompat\Program\Amcache.hiv" "%COLLECT_ROOT%\WindowsArtifacts"
 exit /b 0
 
@@ -500,6 +502,9 @@ goto :delete_collection_paths
 call :delete_collection_suffix "%COLLECT_ROOT%\Profiles" "Local Settings\Application Data\Google\Chrome\Application"
 call :delete_collection_suffix "%COLLECT_ROOT%\Profiles" "AppData\Local\Google\Chrome"
 call :delete_collection_suffix "%COLLECT_ROOT%\Profiles" "Application Data\Microsoft\User Account Pictures"
+call :delete_collection_suffix "%COLLECT_ROOT%\WindowsArtefacts\LOG\Debug"
+call :delete_collection_suffix "%COLLECT_ROOT%\WindowsArtefacts\LOG\repair"
+call :delete_collection_suffix "%COLLECT_ROOT%\WindowsArtefacts\LOG\system32\config\systemprofile"
 goto :eof
 
 :normalise_attributes
