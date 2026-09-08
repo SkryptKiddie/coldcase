@@ -29,23 +29,26 @@ call :log Target drive: %TARGET_VOL%
 call :log Output folder: %COLLECT_ROOT%
 if defined DRYRUN call :log Dry run enabled. No artefacts will be copied.
 
-call :log [PHASE] Collecting system artefacts
-call :collect_system
-call :log [PHASE] Collecting registry artefacts
-call :collect_registry
-call :log [PHASE] Collecting event log artefacts
-call :collect_eventlogs
+call :log [PHASE] Collecting volatile evidence artefacts
+call :collect_volatile
 call :log [PHASE] Collecting filesystem metadata artefacts
 call :collect_filesystem_metadata
 call :log [PHASE] Building bodyfile
 call :collect_bodyfile
-call :log [PHASE] Collecting Windows log/lnk/inf/prefetch/debug artefacts
+call :log [PHASE] Collecting Windows log/lnk/inf/debug artefacts
 call :collect_windows_artifacts
+call :log [PHASE] Collecting registry artefacts
+call :collect_registry
+call :log [PHASE] Collecting event log artefacts
+call :collect_eventlogs
+call :log [PHASE] Collecting system artefacts
+call :collect_system
 call :log [PHASE] Collecting user profile artefacts
 call :collect_profiles
 call :log [PHASE] Collecting Recycle Bin artefacts
 call :collect_recycle_bin
-call :log [PHASE] Creating ZIP package
+call :log [PHASE] Finalising collection and creating ZIP package
+call :purge_collection_paths
 call :normalise_attributes "%COLLECT_ROOT%"
 call :capture "%COLLECT_ROOT%\collected_items.txt" tree /f %COLLECT_ROOT%
 call :zip_output "%COLLECT_ROOT%" "%ZIP_FILE%"
@@ -220,23 +223,6 @@ xcopy "%~1" "%~2\" /S /H /I /C /K /Y /F
 if errorlevel 1 call :log XCOPY reported an issue for pattern: %~1
 goto :eof
 
-:copy_dir_without_user_account_pictures
-if not exist "%~1" (
-	call :log Missing directory: %~1
-	goto :eof
-)
-call :mkdir "%~2"
-set "EXCLUDE_FILE=%TEMP%\coldcase_exclude_%RANDOM%.txt"
-if defined DRYRUN (
-	echo [DRYRUN] XCOPY "%~1" "%~2\" /E /H /I /C /K /Y /F /EXCLUDE:"%EXCLUDE_FILE%"
-	goto :eof
-)
->"%EXCLUDE_FILE%" echo User Account Pictures
-xcopy "%~1" "%~2\" /E /H /I /C /K /Y /F /EXCLUDE:"%EXCLUDE_FILE%"
-if errorlevel 1 call :log XCOPY reported an issue for: %~1
-if exist "%EXCLUDE_FILE%" del /f /q "%EXCLUDE_FILE%" >nul 2>&1
-goto :eof
-
 :save_hive
 if defined DRYRUN (
 	echo [DRYRUN] REG SAVE %1 "%~2" /Y
@@ -246,6 +232,12 @@ call :log Saving hive %1
 reg save %1 "%~2" /y >nul 2>&1
 if errorlevel 1 call :log Failed to save hive %1
 goto :eof
+
+:collect_volatile
+REM # Collecting volatile artefacts (Prefetch) early to reduce contamination during live response phase.
+call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Prefetch"
+if exist "%SystemRoot%\Prefetch" call :copy_dir "%SystemRoot%\Prefetch" "%COLLECT_ROOT%\WindowsArtifacts\Prefetch"
+exit /b 0
 
 :collect_system
 call :mkdir "%COLLECT_ROOT%\LiveResponse"
@@ -274,7 +266,7 @@ set "HAS_WMIC=0"
 if exist "%SystemRoot%\system32\wbem\wmic.exe" set "HAS_WMIC=1"
 if exist "%SystemRoot%\wbem\wmic.exe" set "HAS_WMIC=1"
 if "%HAS_WMIC%"=="1" (
-    call :log WMIC installed, performing additional live response collections.
+    call :log WMIC detected, performing additional live response collections.
     call :mkdir "%COLLECT_ROOT%\LiveResponse\wmic"
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\installed_programs.txt" wmic product get *
     call :capture "%COLLECT_ROOT%\LiveResponse\wmic\services.txt" wmic service get *
@@ -299,16 +291,21 @@ call :save_hive HKLM\SOFTWARE "%COLLECT_ROOT%\Registry\SOFTWARE.hiv"
 call :save_hive HKLM\SECURITY "%COLLECT_ROOT%\Registry\SECURITY.hiv"
 call :save_hive HKU\.DEFAULT "%COLLECT_ROOT%\Registry\DEFAULT.hiv"
 call :collect_loaded_user_hives
-if exist "%SystemRoot%\repair" call :mkdir "%COLLECT_ROOT%\Registry\repair"
-if exist "%SystemRoot%\repair\sam" call :copy_file "%SystemRoot%\repair\sam" "%COLLECT_ROOT%\Registry\repair"
-if exist "%SystemRoot%\repair\system" call :copy_file "%SystemRoot%\repair\system" "%COLLECT_ROOT%\Registry\repair"
-if exist "%SystemRoot%\repair\software" call :copy_file "%SystemRoot%\repair\software" "%COLLECT_ROOT%\Registry\repair"
-if exist "%SystemRoot%\repair\security" call :copy_file "%SystemRoot%\repair\security" "%COLLECT_ROOT%\Registry\repair"
-if exist "%SystemRoot%\regback" call :mkdir "%COLLECT_ROOT%\Registry\regback"
-if exist "%SystemRoot%\regback\sam" call :copy_file "%SystemRoot%\regback\sam" "%COLLECT_ROOT%\Registry\regback"
-if exist "%SystemRoot%\regback\system" call :copy_file "%SystemRoot%\regback\system" "%COLLECT_ROOT%\Registry\regback"
-if exist "%SystemRoot%\regback\software" call :copy_file "%SystemRoot%\regback\software" "%COLLECT_ROOT%\Registry\regback"
-if exist "%SystemRoot%\regback\security" call :copy_file "%SystemRoot%\regback\security" "%COLLECT_ROOT%\Registry\regback"
+if exist "%SystemRoot%\repair" (
+	call :mkdir "%COLLECT_ROOT%\Registry\repair"
+	call :copy_dir "%SystemRoot%\repair" "%COLLECT_ROOT%\Registry\repair"
+)
+if exist "%SystemRoot%\system32\config\regback" (
+	call :mkdir "%COLLECT_ROOT%\Registry\regback"
+	call :copy_dir "%SystemRoot%\regback" "%COLLECT_ROOT%\Registry\regback"
+)
+if exist "%SystemRoot%\system32\config\systemprofile" (
+	call :mkdir "%COLLECT_ROOT%\Registry\systemprofile"
+	if exist "%SystemRoot%\system32\config\systemprofile\Application Data" call :copy_dir "%SystemRoot%\system32\config\systemprofile\Application Data" "%COLLECT_ROOT%\Registry\systemprofile\Application Data"
+	if exist "%SystemRoot%\system32\config\systemprofile\AppData" call :copy_dir "%SystemRoot%\system32\config\systemprofile\AppData" "%COLLECT_ROOT%\Registry\systemprofile\AppData"
+	if exist "%SystemRoot%\system32\config\systemprofile\Local Settings" call :copy_dir "%SystemRoot%\system32\config\systemprofile\Local Settings" "%COLLECT_ROOT%\Registry\systemprofile\Local Settings"
+	if exist "%SystemRoot%\system32\config\systemprofile\Start Menu" call :copy_dir "%SystemRoot%\system32\config\systemprofile\Start Menu" "%COLLECT_ROOT%\Registry\systemprofile\Start Menu"
+)
 exit /b 0
 
 :collect_loaded_user_hives
@@ -435,7 +432,6 @@ call :mkdir "%COLLECT_ROOT%\WindowsArtifacts"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\LOG"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\LNK"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\INF"
-call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Prefetch"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Debug"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 call :mkdir "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
@@ -444,7 +440,6 @@ call :copy_pattern "%TARGET_VOL%\*.lnk" "%COLLECT_ROOT%\WindowsArtifacts\LNK"
 REM call :copy_pattern "%SystemRoot%\*.inf" "%COLLECT_ROOT%\WindowsArtifacts\INF"
 REM if exist "%SystemRoot%\inf" call :copy_dir "%SystemRoot%\inf" "%COLLECT_ROOT%\WindowsArtifacts\INF\inf"
 if exist "%SystemRoot%\setupapi.log" call :copy_file "%SystemRoot%\setupapi.log" "%COLLECT_ROOT%\WindowsArtifacts\INF"
-if exist "%SystemRoot%\Prefetch" call :copy_dir "%SystemRoot%\Prefetch" "%COLLECT_ROOT%\WindowsArtifacts\Prefetch"
 if exist "%SystemRoot%\Debug" call :copy_dir "%SystemRoot%\Debug" "%COLLECT_ROOT%\WindowsArtifacts\Debug"
 if exist "%SystemRoot%\WINNT" call :copy_dir "%SystemRoot%\WINNT" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
 if exist "%TARGET_VOL%\AUTOEXEC.BAT" call :copy_file "%TARGET_VOL%\AUTOEXEC.BAT" "%COLLECT_ROOT%\WindowsArtifacts\Persistence"
@@ -458,11 +453,13 @@ if exist "%SystemRoot%\Temp" call :copy_dir "%SystemRoot%\Temp" "%COLLECT_ROOT%\
 if exist "%SystemRoot%\Tasks" call :copy_dir "%SystemRoot%\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 if exist "%SystemRoot%\System32\Tasks" call :copy_dir "%SystemRoot%\System32\Tasks" "%COLLECT_ROOT%\WindowsArtifacts\Tasks"
 if exist "%SystemRoot%\repair" call :copy_dir "%SystemRoot%\repair" "%COLLECT_ROOT%\WindowsArtifacts\repair"
+if exist "%SystemRoot%/appcompat\Program\Amcache.hiv" call :copy_file "%SystemRoot%/appcompat\Program\Amcache.hiv" "%COLLECT_ROOT%\WindowsArtifacts"
 exit /b 0
 
 :collect_profiles
 if exist "%TARGET_VOL%\Documents and Settings" (
-	for /d %%P in ("%TARGET_VOL%\Documents and Settings\*") do call :collect_one_profile "%%~fP" legacy
+	if exist "%TARGET_VOL%\Documents and Settings\Default User" call :collect_one_profile "%TARGET_VOL%\Documents and Settings\Default User" legacy
+	for /d %%P in ("%TARGET_VOL%\Documents and Settings\*") do if /i "%%~nxP" NEQ "Default User" call :collect_one_profile "%%~fP" legacy
 	exit /b 0
 )
 if exist "%TARGET_VOL%\Users" (
@@ -475,6 +472,38 @@ if exist "%TARGET_VOL%\RECYCLER" call :copy_dir "%TARGET_VOL%\RECYCLER" "%COLLEC
 if exist "%TARGET_VOL%\Recycled" call :copy_dir "%TARGET_VOL%\Recycled" "%COLLECT_ROOT%\RecycleBin\Recycled"
 if exist "%TARGET_VOL%\$Recycle.Bin" call :copy_dir "%TARGET_VOL%\$Recycle.Bin" "%COLLECT_ROOT%\RecycleBin\$Recycle.Bin"
 exit /b 0
+
+:delete_collection_path
+if "%~1"=="" goto :eof
+if not exist "%~1" goto :eof
+if defined DRYRUN (
+	echo [DRYRUN] RD /S /Q "%~1"
+	goto :eof
+)
+call :log Removing collection path: %~1
+rd /s /q "%~1" >nul 2>&1
+if exist "%~1" call :log Failed to remove collection path: %~1
+goto :eof
+
+:delete_collection_suffix
+if "%~1"=="" goto :eof
+if "%~2"=="" goto :eof
+for /d %%D in ("%~1\*") do (
+    call :delete_collection_path "%%~fD\%~2"
+)
+goto :eof
+
+:delete_collection_paths
+if "%~1"=="" goto :eof
+call :delete_collection_path "%~1"
+shift
+goto :delete_collection_paths
+
+:purge_collection_paths
+call :delete_collection_suffix "%COLLECT_ROOT%\Profiles" "Local Settings\Application Data\Google\Chrome\Application"
+call :delete_collection_suffix "%COLLECT_ROOT%\Profiles" "AppData\Local\Google\Chrome"
+call :delete_collection_suffix "%COLLECT_ROOT%\Profiles" "Application Data\Microsoft\User Account Pictures"
+goto :eof
 
 :normalise_attributes
 if defined DRYRUN (
@@ -502,9 +531,9 @@ if /i "%PROFILE_LAYOUT%"=="modern" (
 	if exist "%PROFILE_PATH%\AppData\LocalLow" call :copy_dir "%PROFILE_PATH%\AppData\LocalLow" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\AppData\LocalLow"
 ) else (
 	if exist "%PROFILE_PATH%\Recent" call :copy_dir "%PROFILE_PATH%\Recent" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Recent"
-	if exist "%PROFILE_PATH%\All Users\Start Menu" call :copy_dir "%PROFILE_PATH%\All Users\Start Menu" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\All Users\Start Menu"
+	if exist "%PROFILE_PATH%\Start Menu" call :copy_dir "%PROFILE_PATH%\Start Menu" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Start Menu"
 	if exist "%PROFILE_PATH%\Application Data" if /i "%PROFILE_NAME%"=="All Users" (
-		call :copy_dir_without_user_account_pictures "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
+		call :copy_dir "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
 	) else if exist "%PROFILE_PATH%\Application Data" call :copy_dir "%PROFILE_PATH%\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Application Data"
 	if exist "%PROFILE_PATH%\Local Settings\Application Data" call :copy_dir "%PROFILE_PATH%\Local Settings\Application Data" "%COLLECT_ROOT%\Profiles\%PROFILE_NAME%\Local Settings\Application Data"
 )
